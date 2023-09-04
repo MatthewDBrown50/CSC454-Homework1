@@ -13,12 +13,14 @@ public:
         type = -1;
         name = "";
         currentRoom = -1;
+        identifier = -1;
     }
 
-    Occupant(int occupantType, string occupantName, int occupantRoom) {
-        type = occupantType;
-        name = occupantName;
-        currentRoom = occupantRoom;
+    Occupant(int type, string name, int currentRoom, int identifier) {
+        this->type = type;
+        this->name = name;
+        this->currentRoom = currentRoom;
+        this->identifier = identifier;
     }
 
     int getType() {
@@ -33,25 +35,38 @@ public:
         return currentRoom;
     }
 
+    int getIdentifier() {
+        return identifier;
+    }
+
 private:
     // 0 for PC, 1 for animal, 2 for NPC
     int type;
     string name;
     int currentRoom;
+    int identifier;
 };
 
 class PC : public Occupant {
 public:
     PC() : Occupant() {
-        reputation = 40;
+        respect = 40;
     }
 
-    PC(string playerName, int playerRoom) : Occupant(0, playerName, playerRoom) {
-        reputation = 40;
+    PC(string playerName, int playerRoom) : Occupant(0, playerName, playerRoom, -1) {
+        respect = 40;
+    }
+
+    int getRespect() {
+        return respect;
+    }
+
+    void setRespect(int respect) {
+        this->respect = respect;
     }
 
 private:
-    int reputation;
+    int respect;
 };
 
 class Room {
@@ -74,6 +89,11 @@ public:
         occupants = new Occupant[10];
     }
 
+    ~Room() {
+        delete[] neighbors;
+        delete[] occupants;
+    }
+
     int getCleanliness() const {
         return cleanliness;
     }
@@ -85,11 +105,16 @@ public:
         return -1;
     }
 
+    void setCleanliness(int cleanliness) {
+        this->cleanliness = cleanliness;
+    }
+
     Occupant* getOccupants() {
         return occupants;
     }
 
 private:
+    // 0 = dirty, 1 = half-dirty, 2 = clean
     int cleanliness;
     int* neighbors;
     Occupant* occupants;
@@ -113,9 +138,15 @@ int main()
 
     PC* player = createOccupants(numberOfRooms, rooms, numberOfCreatures);
 
+    // TODO: REMOVE THIS WHEN FINISHED TESTING.
     //cout << player->getName() << " " << to_string(player->getType()) << " " << to_string(player->getCurrentRoom());
 
-    exit(gameLoop(rooms, numberOfRooms, player));
+    int exitCode = gameLoop(rooms, numberOfRooms, player);
+
+    delete[] rooms;
+    delete player;
+
+    exit(exitCode);
 }
 
 int gameLoop(Room* rooms, int numberOfRooms, PC* player) {
@@ -134,12 +165,12 @@ int gameLoop(Room* rooms, int numberOfRooms, PC* player) {
             colonPosition = i;
             break;
         }
-    }
-
-    string creature = "";
-    string command = "";
+    }    
 
     if (colonPosition >= 0) {
+        string creature = "";
+        string command = "";
+
         for (int i = 0; i < colonPosition; i++) {
             creature += userInput[i];
         }
@@ -155,34 +186,150 @@ int gameLoop(Room* rooms, int numberOfRooms, PC* player) {
         if (command == "clean") {
             // Condition verifies that the specified creature is an occupant of the current room
             if (rooms[player->getCurrentRoom()].getOccupants()[stoi(creature)].getType() >= 0) {
-                cleanRoom(player->getCurrentRoom(), stoi(creature));
+                cleanRoom(rooms, player->getCurrentRoom(), stoi(creature), player);
             }
             else {
                 cout << "That creature is not in this room.";
             }            
         }
         else if (command == "dirty") {
-
+            if (rooms[player->getCurrentRoom()].getOccupants()[stoi(creature)].getType() >= 0) {
+                dirtyRoom(rooms, player->getCurrentRoom(), stoi(creature), player);
+            }
+            else {
+                cout << "That creature is not in this room.";
+            }
         }
         else if (command == "leave") {
-
+            // TODO: THIS CREATURE LEAVES THE ROOM
         }
         else {
             cout << "Invalid command!";
             return -1;
         }
 
-        // check win condtion. If win or lose conditions are met, display appropriate message. Otherwise, call gameLoop(rooms, numberOfRooms, player);
+        // Check win condtion. If win or lose conditions are met, display appropriate message. Otherwise, call gameLoop(rooms, numberOfRooms, player);
+        if (!checkGameOver(player)) {
+            return gameLoop(rooms, numberOfRooms, player);
+        }
     }
-
-    cout << "creature: " + creature << endl;
-    cout << "command: " + command << endl;
 
     return 0;
 }
 
-void cleanRoom(int roomNumber, int creature) {
+void cleanRoom(Room* rooms, int roomNumber, int creature, PC* player) {
+    int currentCleanliness = rooms[roomNumber].getCleanliness();
 
+    if (currentCleanliness == 2) {
+        cout << "The room is already clean. No action performed." << endl;
+        return;
+    }
+
+    int newCleanliness = currentCleanliness + 1;
+
+    rooms[roomNumber].setCleanliness(newCleanliness);
+
+    for (int i = 0; i < 10; i++) {
+        if (rooms[roomNumber].getOccupants()[i].getType() < 0) {
+            break;
+        }
+
+        if (rooms[roomNumber].getOccupants()[i].getType() == 0) {
+            continue;
+        }      
+
+        if (rooms[roomNumber].getOccupants()[i].getType() == 1) {
+            if (rooms[roomNumber].getOccupants()[i].getIdentifier() == creature) {
+                player->setRespect(player->getRespect() + 3);
+
+                cout << rooms[roomNumber].getOccupants()[i].getName() << " licks your face a lot. Respect is now " << to_string(player->getRespect()) << "." << endl;
+            }
+            else {
+                player->setRespect(player->getRespect() + 1);
+
+                cout << rooms[roomNumber].getOccupants()[i].getName() << " licks your face. Respect is now " << to_string(player->getRespect()) << "." << endl;
+            }
+        }
+
+        if (rooms[roomNumber].getOccupants()[i].getType() == 2) {
+            if (rooms[roomNumber].getOccupants()[i].getIdentifier() == creature) {
+                player->setRespect(player->getRespect() - 3);
+
+                cout << rooms[roomNumber].getOccupants()[i].getName() << " grumbles a lot. Respect is now " << to_string(player->getRespect()) << "." << endl;
+            }
+            else {
+                player->setRespect(player->getRespect() - 1);
+
+                cout << rooms[roomNumber].getOccupants()[i].getName() << " grumbles. Respect is now " << to_string(player->getRespect()) << "." << endl;
+            }
+
+            if (rooms[roomNumber].getCleanliness() == 2) {
+                // TODO: THIS NPC LEAVES THE ROOM
+            }
+        }
+    }
+}
+
+void dirtyRoom(Room* rooms, int roomNumber, int creature, PC* player) {
+    int currentCleanliness = rooms[roomNumber].getCleanliness();
+
+    if (currentCleanliness == 0) {
+        cout << "The room is already dirty. No action performed." << endl;
+        return;
+    }
+
+    int newCleanliness = currentCleanliness - 1;
+
+    rooms[roomNumber].setCleanliness(newCleanliness);
+
+    for (int i = 0; i < 10; i++) {
+        if (rooms[roomNumber].getOccupants()[i].getType() <= 0) {
+            continue;
+        }
+
+        if (rooms[roomNumber].getOccupants()[i].getType() == 1) {
+            if (rooms[roomNumber].getOccupants()[i].getIdentifier() == creature) {
+                player->setRespect(player->getRespect() - 3);
+
+                cout << rooms[roomNumber].getOccupants()[i].getName() << " growls a lot. Respect is now " << to_string(player->getRespect()) << "." << endl;
+            }
+            else {
+                player->setRespect(player->getRespect() - 1);
+
+                cout << rooms[roomNumber].getOccupants()[i].getName() << " growls. Respect is now " << to_string(player->getRespect()) << "." << endl;
+            }
+
+            if (rooms[roomNumber].getCleanliness() == 0) {
+                // TODO: THIS ANIMAL LEAVES THE ROOM
+            }
+        }
+
+        if (rooms[roomNumber].getOccupants()[i].getType() == 2) {
+            if (rooms[roomNumber].getOccupants()[i].getIdentifier() == creature) {
+                player->setRespect(player->getRespect() + 3);
+
+                cout << rooms[roomNumber].getOccupants()[i].getName() << " smiles a lot. Respect is now " << to_string(player->getRespect()) << "." << endl;
+            }
+            else {
+                player->setRespect(player->getRespect() + 1);
+
+                cout << rooms[roomNumber].getOccupants()[i].getName() << " smiles. Respect is now " << to_string(player->getRespect()) << "." << endl;
+            }            
+        }
+    }
+}
+
+bool checkGameOver(PC* player) {
+    if (player->getRespect() <= 0) {
+        cout << "Your respect has reached 0. You have failed. Game over.";
+        return true;
+    }
+    else if (player->getRespect() >= 80) {
+        cout << "Congratulations! Your respect is " + to_string(player->getRespect()) + "! You are victorious! Game over.";
+        return true;
+    }
+
+    return false;
 }
 
 Room* createRooms(int numberOfRooms) {
@@ -233,11 +380,11 @@ PC* createOccupants(int numberOfRooms, Room* rooms, int numberOfCreatures) {
             break;
         case 1:
             creatureName = "Animal " + to_string(i);
-            occupant = new Occupant(creatureType, creatureName, creatureRoom);
+            occupant = new Occupant(creatureType, creatureName, creatureRoom, i);
             break;
         case 2:
             creatureName = "NPC " + to_string(i);
-            occupant = new Occupant(creatureType, creatureName, creatureRoom);
+            occupant = new Occupant(creatureType, creatureName, creatureRoom, i);
             break;
         default:
             cout << "Invalid creature type!";
