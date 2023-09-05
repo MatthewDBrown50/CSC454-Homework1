@@ -113,6 +113,30 @@ public:
         return occupants;
     }
 
+    Occupant getOccupant(int creature) {
+        for (int i = 0; i < 10; i++) {
+            if (this->occupants[i].getIdentifier() == creature) {
+                return this->occupants[i];
+            }
+        }
+
+        return Occupant();
+    }
+
+    void setOccupant(Occupant occupant, int index) {
+        occupants[index] = occupant;
+    }
+
+    int getOccupantPosition(int creature) {
+        for (int i = 0; i < 10; i++) {
+            if (this->occupants[i].getIdentifier() == creature) {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
 private:
     // 0 = dirty, 1 = half-dirty, 2 = clean
     int cleanliness;
@@ -123,6 +147,14 @@ private:
 int gameLoop(Room* rooms, int numberOfRooms, PC* player);
 Room* createRooms(int numberOfRooms);
 PC* createOccupants(int numberOfRooms, Room* rooms, int numberOfCreatures);
+void smile(string creatureName, PC* player);
+void smileALot(string creatureName, PC* player);
+void grumble(string creatureName, PC* player);
+void grumbleALot(string creatureName, PC* player);
+void lickFace(string creatureName, PC* player);
+void lickFaceALot(string creatureName, PC* player);
+void growl(string creatureName, PC* player);
+void growlALot(string creatureName, PC* player);
 
 int main()
 {
@@ -137,9 +169,6 @@ int main()
     cin.ignore(1, '\n');
 
     PC* player = createOccupants(numberOfRooms, rooms, numberOfCreatures);
-
-    // TODO: REMOVE THIS WHEN FINISHED TESTING.
-    //cout << player->getName() << " " << to_string(player->getType()) << " " << to_string(player->getCurrentRoom());
 
     int exitCode = gameLoop(rooms, numberOfRooms, player);
 
@@ -170,12 +199,19 @@ int gameLoop(Room* rooms, int numberOfRooms, PC* player) {
     if (colonPosition >= 0) {
         string creature = "";
         string command = "";
+        string partialCommand = "";        
 
         for (int i = 0; i < colonPosition; i++) {
             creature += userInput[i];
-        }
+        }        
+
+        int secondColonPosition = -1;
 
         for (int i = colonPosition + 1; i < inputSize; i++) {
+            if (userInput[i] == ':') {
+                secondColonPosition = i;
+            }
+
             if (userInput[i] == ' ') {
                 break;
             }
@@ -183,9 +219,29 @@ int gameLoop(Room* rooms, int numberOfRooms, PC* player) {
             command += userInput[i];
         }
 
+        string newRoom = "";
+
+        if (secondColonPosition >= 0) {
+            for (int i = (secondColonPosition + 1); i < inputSize; i++) {
+                if (userInput[i] == ' ') {
+                    break;
+                }
+
+                newRoom += userInput[i];
+            }
+        }
+
         if (command == "clean") {
-            // Condition verifies that the specified creature is an occupant of the current room
-            if (rooms[player->getCurrentRoom()].getOccupants()[stoi(creature)].getType() >= 0) {
+            bool creatureIsInCurrentRoom = false;
+
+            for (int i = 0; i < 10; i++) {
+                if (rooms[player->getCurrentRoom()].getOccupants()[i].getIdentifier() == stoi(creature)) {
+                    creatureIsInCurrentRoom = true;
+                    break;
+                }
+            }
+            
+            if (creatureIsInCurrentRoom) {
                 cleanRoom(rooms, player->getCurrentRoom(), stoi(creature), player);
             }
             else {
@@ -193,7 +249,16 @@ int gameLoop(Room* rooms, int numberOfRooms, PC* player) {
             }            
         }
         else if (command == "dirty") {
-            if (rooms[player->getCurrentRoom()].getOccupants()[stoi(creature)].getType() >= 0) {
+            bool creatureIsInCurrentRoom = false;
+
+            for (int i = 0; i < 10; i++) {
+                if (rooms[player->getCurrentRoom()].getOccupants()[i].getIdentifier() == stoi(creature)) {
+                    creatureIsInCurrentRoom = true;
+                    break;
+                }
+            }
+
+            if (creatureIsInCurrentRoom) {
                 dirtyRoom(rooms, player->getCurrentRoom(), stoi(creature), player);
             }
             else {
@@ -201,7 +266,7 @@ int gameLoop(Room* rooms, int numberOfRooms, PC* player) {
             }
         }
         else if (command == "leave") {
-            // TODO: THIS CREATURE LEAVES THE ROOM
+            leaveRoomAsDirected(rooms, stoi(creature), player->getCurrentRoom(), stoi(newRoom), player);
         }
         else {
             cout << "Invalid command!";
@@ -240,27 +305,19 @@ void cleanRoom(Room* rooms, int roomNumber, int creature, PC* player) {
 
         if (rooms[roomNumber].getOccupants()[i].getType() == 1) {
             if (rooms[roomNumber].getOccupants()[i].getIdentifier() == creature) {
-                player->setRespect(player->getRespect() + 3);
-
-                cout << rooms[roomNumber].getOccupants()[i].getName() << " licks your face a lot. Respect is now " << to_string(player->getRespect()) << "." << endl;
+                lickFaceALot(rooms[roomNumber].getOccupants()[i].getName(), player);
             }
             else {
-                player->setRespect(player->getRespect() + 1);
-
-                cout << rooms[roomNumber].getOccupants()[i].getName() << " licks your face. Respect is now " << to_string(player->getRespect()) << "." << endl;
+                lickFace(rooms[roomNumber].getOccupants()[i].getName(), player);
             }
         }
 
         if (rooms[roomNumber].getOccupants()[i].getType() == 2) {
             if (rooms[roomNumber].getOccupants()[i].getIdentifier() == creature) {
-                player->setRespect(player->getRespect() - 3);
-
-                cout << rooms[roomNumber].getOccupants()[i].getName() << " grumbles a lot. Respect is now " << to_string(player->getRespect()) << "." << endl;
+                grumbleALot(rooms[roomNumber].getOccupants()[i].getName(), player);
             }
             else {
-                player->setRespect(player->getRespect() - 1);
-
-                cout << rooms[roomNumber].getOccupants()[i].getName() << " grumbles. Respect is now " << to_string(player->getRespect()) << "." << endl;
+                grumble(rooms[roomNumber].getOccupants()[i].getName(), player);
             }
 
             if (rooms[roomNumber].getCleanliness() == 2) {
@@ -289,14 +346,10 @@ void dirtyRoom(Room* rooms, int roomNumber, int creature, PC* player) {
 
         if (rooms[roomNumber].getOccupants()[i].getType() == 1) {
             if (rooms[roomNumber].getOccupants()[i].getIdentifier() == creature) {
-                player->setRespect(player->getRespect() - 3);
-
-                cout << rooms[roomNumber].getOccupants()[i].getName() << " growls a lot. Respect is now " << to_string(player->getRespect()) << "." << endl;
+                growlALot(rooms[roomNumber].getOccupants()[i].getName(), player);
             }
             else {
-                player->setRespect(player->getRespect() - 1);
-
-                cout << rooms[roomNumber].getOccupants()[i].getName() << " growls. Respect is now " << to_string(player->getRespect()) << "." << endl;
+                growl(rooms[roomNumber].getOccupants()[i].getName(), player);
             }
 
             if (rooms[roomNumber].getCleanliness() == 0) {
@@ -306,16 +359,45 @@ void dirtyRoom(Room* rooms, int roomNumber, int creature, PC* player) {
 
         if (rooms[roomNumber].getOccupants()[i].getType() == 2) {
             if (rooms[roomNumber].getOccupants()[i].getIdentifier() == creature) {
-                player->setRespect(player->getRespect() + 3);
-
-                cout << rooms[roomNumber].getOccupants()[i].getName() << " smiles a lot. Respect is now " << to_string(player->getRespect()) << "." << endl;
+                smile(rooms[roomNumber].getOccupants()[i].getName(), player);
             }
             else {
-                player->setRespect(player->getRespect() + 1);
-
-                cout << rooms[roomNumber].getOccupants()[i].getName() << " smiles. Respect is now " << to_string(player->getRespect()) << "." << endl;
+                smileALot(rooms[roomNumber].getOccupants()[i].getName(), player);
             }            
         }
+    }
+}
+
+void leaveRoomAsDirected(Room* rooms, int creature, int currentRoom, int destination, PC* player) {
+    int currentOccupancyPosition = rooms[currentRoom].getOccupantPosition(creature);
+    int newOccupancyPosition = -1;
+    int creatureType = rooms[currentRoom].getOccupant(creature).getType();
+    string creatureName = rooms[currentRoom].getOccupant(creature).getName();
+
+    for (int i = 0; i < 10; i++) {
+        if (rooms[destination].getOccupants()[i].getType() == -1) {
+            newOccupancyPosition = i;
+        }
+    }
+
+    if (newOccupancyPosition < 0) {
+        cout << "Destination room is full" << endl;
+
+        if (creatureType == 1) {
+            growl(creatureName, player);
+        }
+        else {
+            grumble(creatureName, player);
+        }
+
+        return;
+    }
+
+    rooms[destination].setOccupant(Occupant(creatureType, creatureName, currentRoom, creature), newOccupancyPosition);
+    rooms[currentRoom].setOccupant(Occupant(), currentOccupancyPosition);
+
+    if ((creatureType == 1 && rooms[destination].getCleanliness() == 0) || (creatureType == 2 && rooms[destination].getCleanliness() == 2)) {
+        rooms[destination].setCleanliness(1);
     }
 }
 
@@ -330,6 +412,54 @@ bool checkGameOver(PC* player) {
     }
 
     return false;
+}
+
+void lickFace(string creatureName, PC* player) {
+    player->setRespect(player->getRespect() + 1);
+
+    cout << creatureName << " licks your face. Respect is now " << to_string(player->getRespect()) << "." << endl;
+}
+
+void lickFaceALot(string creatureName, PC* player) {
+    player->setRespect(player->getRespect() + 3);
+
+    cout << creatureName << " licks your face a lot. Respect is now " << to_string(player->getRespect()) << "." << endl;
+}
+
+void growl(string creatureName, PC* player) {
+    player->setRespect(player->getRespect() - 1);
+
+    cout << creatureName << " growls. Respect is now " << to_string(player->getRespect()) << "." << endl;
+}
+
+void growlALot(string creatureName, PC* player) {
+    player->setRespect(player->getRespect() - 3);
+
+    cout << creatureName << " growls a lot. Respect is now " << to_string(player->getRespect()) << "." << endl;
+}
+
+void smile(string creatureName, PC* player) {
+    player->setRespect(player->getRespect() + 1);
+
+    cout << creatureName << " smiles. Respect is now " << to_string(player->getRespect()) << "." << endl;
+}
+
+void smileALot(string creatureName, PC* player) {
+    player->setRespect(player->getRespect() + 3);
+
+    cout << creatureName << " smiles a lot. Respect is now " << to_string(player->getRespect()) << "." << endl;
+}
+
+void grumble(string creatureName, PC* player) {
+    player->setRespect(player->getRespect() - 1);
+
+    cout << creatureName << " grumbles. Respect is now " << to_string(player->getRespect()) << "." << endl;
+}
+
+void grumbleALot(string creatureName, PC* player) {
+    player->setRespect(player->getRespect() - 3);
+
+    cout << creatureName << " grumbles a lot. Respect is now " << to_string(player->getRespect()) << "." << endl;
 }
 
 Room* createRooms(int numberOfRooms) {
