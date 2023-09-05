@@ -147,6 +147,10 @@ private:
 int gameLoop(Room* rooms, int numberOfRooms, PC* player);
 Room* createRooms(int numberOfRooms);
 PC* createOccupants(int numberOfRooms, Room* rooms, int numberOfCreatures);
+void cleanRoom(Room* rooms, int roomNumber, int creature, PC* player);
+void dirtyRoom(Room* rooms, int roomNumber, int creature, PC* player);
+bool checkGameOver(PC* player);
+void leaveRoomAsDirected(Room* rooms, int creature, int currentRoom, int destination, PC* player);
 void smile(string creatureName, PC* player);
 void smileALot(string creatureName, PC* player);
 void grumble(string creatureName, PC* player);
